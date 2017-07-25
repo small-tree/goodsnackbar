@@ -1,14 +1,14 @@
 package com.example.goodsnackbar;
 
+import android.app.Activity;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 
 import com.example.goodsnackbar.mysnackbar.GoodSnackbar;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
 
     private FrameLayout viewById;
 
@@ -20,28 +20,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public void onClick(View view){
-        GoodSnackbar make = GoodSnackbar.make(viewById, "i am goodsnackbar", 2000);
+    public void onClick(View view) {
+        final View inflate = View.inflate(this, R.layout.mysnackbar_layout, null);
+        Button bt_action = (Button) inflate.findViewById(R.id.bt_action);
+        final GoodSnackbar instance = GoodSnackbar.make(this.viewById).setMyView(inflate)
+                .setDuration(2500);
         switch (((Button) view).getText().toString()) {
-            case "left":
-                make.setMessage("i am left");
-                make.setWhereFrom(GoodSnackbar.From.LEFT);
-                break;
             case "top":
-                make.setMessage("i am top");
-                make.setWhereFrom(GoodSnackbar.From.TOP);
-                break;
-            case "right":
-                make.setMessage("i am right");
-                make.setWhereFrom(GoodSnackbar.From.RIGHT);
+                instance.setWhereFrom(GoodSnackbar.From.TOP);
                 break;
             case "bottom":
-                make.setMessage("i am bottom");
-                make.setWhereFrom(GoodSnackbar.From.BOTTOM);
+                instance.setWhereFrom(GoodSnackbar.From.BOTTOM);
                 break;
         }
-
-        make.show();
+        bt_action.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                instance.close();
+            }
+        });
+        instance.show();
     }
 
 }

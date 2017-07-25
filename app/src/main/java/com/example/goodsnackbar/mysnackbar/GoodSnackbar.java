@@ -11,18 +11,14 @@ import android.support.v4.view.animation.FastOutSlowInInterpolator;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-
-import com.example.goodsnackbar.R;
 
 import static com.example.goodsnackbar.mysnackbar.GoodSnackbar.Status.HID;
+import static com.example.goodsnackbar.mysnackbar.GoodSnackbar.Status.HIDING;
+import static com.example.goodsnackbar.mysnackbar.GoodSnackbar.Status.SHOW;
 import static com.example.goodsnackbar.mysnackbar.GoodSnackbar.Status.SHOWING;
-import static com.example.goodsnackbar.mysnackbar.GoodSnackbar.Status.USING;
 
 /**
  * Created by Administrator on 2017/3/9.
@@ -32,34 +28,32 @@ public class GoodSnackbar {
 
     private static final String TAG = "GoodSnackbar";
     private static final int ANIM_END = 100;
-    OnActionButtonClickListener onActionButtonClickListener;
+
+
+    OnDismissListener onDismissListener;
+
+    public void setOnDismissListener(OnDismissListener onDismissListener) {
+        this.onDismissListener = onDismissListener;
+    }
 
     /**
-     * 弹出view的宽度 or 高度
-     */
-    int snackbarHeight;
-    /**
-     * -1 ,animation is start
-     * 0 ,showing
-     * 1 ,hid
+     * SHOWING 显示动画正在执行
+     * SHOW  snackbar 显示状态
+     * HIDING  隐藏动画正在执行
+     * HID snackbar 隐藏状态
      */
     private Status status = HID;
     private From from;
-
-    ViewGroup parent;
-    String showMsg;
+    ViewGroup parentView;
     int duration = 2500;
     private View myView;
-    private TextView tv_msg;
-    private TextView bt_action;
 
-
-    static enum Status {
-        SHOWING, HID, USING
+    enum Status {
+        SHOWING, SHOW, HIDING, HID
     }
 
-    public static enum From {
-        LEFT(Gravity.LEFT), TOP(Gravity.TOP), RIGHT(Gravity.RIGHT), BOTTOM(Gravity.BOTTOM);
+    public enum From {
+        TOP(Gravity.TOP), BOTTOM(Gravity.BOTTOM);
 
         From(int i) {
             gravity = i;
@@ -75,7 +69,7 @@ public class GoodSnackbar {
             super.handleMessage(msg);
             switch (msg.what) {
                 case ANIM_END:
-                    if (getStatus() == SHOWING) {
+                    if (getStatus() == SHOW) {
                         hideLayoutOut();
                     }
                     break;
@@ -89,76 +83,50 @@ public class GoodSnackbar {
 
     private static MySnackbarBaseLayout baseLayout;
 
-    private GoodSnackbar(ViewGroup parent, String msg, int duration) {
-        this.parent = parent;
-        this.showMsg = msg;
-        this.duration = duration;
-        this.snackbarHeight = dp2px(parent.getContext(), 50);
-        baseLayout = new MySnackbarBaseLayout(parent.getContext());
+
+    private GoodSnackbar(ViewGroup parentView) {
+        this.parentView = parentView;
+        baseLayout = new MySnackbarBaseLayout(parentView.getContext());
         ViewGroup.LayoutParams layoutParams = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         baseLayout.setLayoutParams(layoutParams);
-        myView = LayoutInflater.from(parent.getContext()).inflate(R.layout.mysnackbar_layout, parent, false);
-        setMessage();
-        baseLayout.addView(myView);
-    }
-
-    public static GoodSnackbar make(FrameLayout parent, String msg, int duration) {
-        return new GoodSnackbar(parent, msg, duration);
     }
 
     /**
-     * 获取一个 goodSnackbar 实例
-     * @param parent 父控件
-     * @param msg 信息
-     * @param duration 显示时间
-     * @return
+     * set a view to display
+     *
+     * @param view GoodSnackBar's contentview.
      */
-    public static GoodSnackbar make(CoordinatorLayout parent, String msg, int duration) {
-        return new GoodSnackbar(parent, msg, duration);
+    public GoodSnackbar setMyView(View view) {
+        myView = view;
+        baseLayout.removeAllViews();
+        baseLayout.addView(myView);
+        return this;
     }
 
-    public GoodSnackbar setMessage(String... msg) {
-        if (msg != null && msg.length > 0) {
-            showMsg = msg[0];
-        }
-        if (myView != null) {
-            if (tv_msg == null) {
-                tv_msg = (TextView) myView.findViewById(R.id.tv_msg);
-                bt_action = (TextView) myView.findViewById(R.id.bt_action);
-            }
-            tv_msg.setText(showMsg);
-        } else {
-            new RuntimeException("myView is null");
-        }
+    /**
+     *
+     */
+    public View getMyView() {
+        return myView;
+    }
+
+    /**
+     * set GoodSnackBar display time.
+     *
+     * @param duration set GoodSnackBar display time (millisecond).
+     */
+    public GoodSnackbar setDuration(int duration) {
+        this.duration = duration;
         return this;
+    }
+
+
+    public static GoodSnackbar make(FrameLayout parent) {
+        return new GoodSnackbar(parent);
     }
 
     public GoodSnackbar setWhereFrom(From from) {
         this.from = from;
-        return this;
-    }
-
-    public GoodSnackbar setMessageGravity(int gravity) {
-        tv_msg.setGravity(gravity);
-        return this;
-    }
-
-    public GoodSnackbar setAction(final OnActionButtonClickListener listener) {
-        if (myView != null) {
-            if (tv_msg == null) {
-                tv_msg = (TextView) myView.findViewById(R.id.tv_msg);
-                bt_action = (TextView) myView.findViewById(R.id.bt_action);
-            }
-            bt_action.setVisibility(View.VISIBLE);
-            bt_action.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    listener.onClick();
-                }
-            });
-        } else {
-            new RuntimeException("myView is null");
-        }
         return this;
     }
 
@@ -167,7 +135,10 @@ public class GoodSnackbar {
     }
 
     public GoodSnackbar show() {
-        parent.addView(baseLayout);
+        if (myView == null) {
+            throw new IllegalStateException("must add a view through setMyView() method.");
+        }
+        parentView.addView(baseLayout);
         snackbarLocal();
         if (ViewCompat.isLaidOut(baseLayout)) {
             showLayoutIn();
@@ -185,69 +156,57 @@ public class GoodSnackbar {
         return this;
     }
 
+    public void close() {
+        hideLayoutOut();
+    }
+
     /**
      * 根据from 属性设置view的位置
      */
     private void snackbarLocal() {
         switch (from) {
-            case LEFT:
-            case RIGHT:
-                ViewGroup.LayoutParams params = baseLayout.getLayoutParams();
-                params.width = snackbarHeight;
-                params.height = ViewGroup.LayoutParams.MATCH_PARENT;
-                if (parent instanceof FrameLayout) {
-                    ((FrameLayout.LayoutParams) params).gravity = from.gravity;
-                } else if (parent instanceof CoordinatorLayout) {
-                    ((CoordinatorLayout.LayoutParams) params).gravity = from.gravity;
-                }
-                baseLayout.setLayoutParams(params);
-
-                if (myView instanceof LinearLayout) {
-                    ((LinearLayout) myView).setOrientation(LinearLayout.VERTICAL);
-                }
-                break;
             case TOP:
             case BOTTOM:
                 ViewGroup.LayoutParams params1 = baseLayout.getLayoutParams();
                 params1.width = ViewGroup.LayoutParams.MATCH_PARENT;
-                params1.height = snackbarHeight;
-                if (parent instanceof FrameLayout) {
+                params1.height = getViewHeight(myView);
+                if (parentView instanceof FrameLayout) {
                     ((FrameLayout.LayoutParams) params1).gravity = from.gravity;
-                } else if (parent instanceof CoordinatorLayout) {
+                } else if (parentView instanceof CoordinatorLayout) {
                     ((CoordinatorLayout.LayoutParams) params1).gravity = from.gravity;
+                } else {
+                    throw new IllegalArgumentException("parent view not Fragment or CoordinatorLayout.");
                 }
                 baseLayout.setLayoutParams(params1);
-                if (myView instanceof LinearLayout) {
-                    ((LinearLayout) myView).setOrientation(LinearLayout.HORIZONTAL);
-                }
                 break;
         }
+    }
+
+    private int getViewHeight(View view) {
+        view.measure(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        return view.getMeasuredHeight();
     }
 
     /**
      * 根据from 属性设置弹出动画
      */
     private void showLayoutIn() {
-        status = USING;
+        if (status == HID) {
+            status = SHOWING;
+        } else {
+            return;
+        }
         ViewPropertyAnimatorCompat compat = ViewCompat.animate(myView)
                 .setInterpolator(new FastOutSlowInInterpolator())
                 .setDuration(250);
 
         switch (from) {
-            case LEFT:
-                ViewCompat.setTranslationX(myView, -myView.getWidth());
-                compat.translationX(0);
-                break;
             case TOP:
-                ViewCompat.setTranslationY(myView, -myView.getHeight());
+                ViewCompat.setTranslationY(myView, -myView.getMeasuredHeight());
                 compat.translationY(0);
                 break;
-            case RIGHT:
-                ViewCompat.setTranslationX(myView, myView.getWidth());
-                compat.translationX(0);
-                break;
             case BOTTOM:
-                ViewCompat.setTranslationY(myView, myView.getHeight());
+                ViewCompat.setTranslationY(myView, myView.getMeasuredHeight());
                 compat.translationY(0);
                 break;
         }
@@ -259,7 +218,7 @@ public class GoodSnackbar {
             @Override
             public void onAnimationEnd(View view) {
                 Log.i(TAG, "onAnimationEnd: ");
-                status = SHOWING;
+                status = SHOW;
                 handler.sendEmptyMessageDelayed(ANIM_END, duration);
             }
 
@@ -274,7 +233,11 @@ public class GoodSnackbar {
      * 根据form 属性设置出去动画
      */
     private void hideLayoutOut() {
-        status = USING;
+        if (status == SHOW) {
+            status = HIDING;
+        } else {
+            return;
+        }
         ViewPropertyAnimatorCompat compat = ViewCompat.animate(myView)
                 .setDuration(250)
                 .setInterpolator(new FastOutSlowInInterpolator())
@@ -286,6 +249,12 @@ public class GoodSnackbar {
                     @Override
                     public void onAnimationEnd(View view) {
                         status = HID;
+                        if (baseLayout != null) {
+                            parentView.removeView(baseLayout);
+                        }
+                        if (onDismissListener != null) {
+                            onDismissListener.dismiss();
+                        }
                     }
 
                     @Override
@@ -293,17 +262,11 @@ public class GoodSnackbar {
                     }
                 });
         switch (from) {
-            case LEFT:
-                compat.translationX(-myView.getWidth());
-                break;
             case TOP:
-                compat.translationY(-myView.getWidth());
-                break;
-            case RIGHT:
-                compat.translationX(myView.getWidth());
+                compat.translationY(-myView.getMeasuredWidth());
                 break;
             case BOTTOM:
-                compat.translationY(myView.getWidth());
+                compat.translationY(myView.getMeasuredWidth());
                 break;
         }
         compat.start();
@@ -316,8 +279,8 @@ public class GoodSnackbar {
         return (int) (dpValue * scale + 0.5f);
     }
 
-    static interface OnActionButtonClickListener {
-        void onClick();
+    interface OnDismissListener {
+        void dismiss();
     }
 
 

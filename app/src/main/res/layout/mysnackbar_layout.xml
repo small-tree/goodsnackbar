@@ -13,13 +13,16 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textColor="#FFFFFF"
+        android:text="好的 ，你收到一条新消息"
+        android:textSize="20dp"
         />
-    <TextView
+    <Button
         android:id="@+id/bt_action"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="ok"
-        android:textColor="#FFFFFF"
+        android:text="知道啦"
+        android:textSize="20dp"
+        android:textColor="#55FFFF"
         android:background="#00000000"
         />
 
